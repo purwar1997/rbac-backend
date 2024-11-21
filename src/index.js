@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import connectToDB from './db/index.js';
 import app from './app.js';
 
@@ -5,7 +6,7 @@ import app from './app.js';
   try {
     await connectToDB();
 
-    app.listen(config.server.port, () => {
+    app.listen(process.env.PORT, () => {
       console.log(`Server is running on http://localhost:${process.env.PORT}`);
     });
   } catch (error) {
