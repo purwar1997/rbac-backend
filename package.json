@@ -1,5 +1,5 @@
 {
-  "name": "rbac-api",
+  "name": "rbac-backend",
   "version": "1.0.0",
   "description": "RESTful APIs for a role-based access control UI",
   "type": "module",
