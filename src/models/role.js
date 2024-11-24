@@ -24,6 +24,15 @@ const roleSchema = new Schema(
         },
       ],
     },
+    userCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'User count cannot be negative'],
+      validate: {
+        validator: Number.isInteger,
+        message: 'User count must be an integer',
+      },
+    },
   },
   {
     timestamps: true,
