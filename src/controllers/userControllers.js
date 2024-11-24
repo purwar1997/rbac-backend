@@ -1,4 +1,5 @@
 import User from '../models/user.js';
+import Role from '../models/role.js';
 import handleAsync from '../utils/handleAsync.js';
 import CustomError from '../utils/customError.js';
 import { sendResponse } from '../utils/helperFunctions.js';
@@ -30,10 +31,7 @@ export const getUsers = handleAsync(async (_req, res) => {
 export const getUserById = handleAsync(async (req, res) => {
   const { userId } = req.params;
 
-  const user = await User.findById(userId).populate({
-    path: 'role',
-    select: 'title',
-  });
+  const user = await User.findById(userId).populate('role');
 
   if (!user) {
     throw new CustomError('User not found', 404);
@@ -44,7 +42,7 @@ export const getUserById = handleAsync(async (req, res) => {
 
 // Adds a new user
 export const addNewUser = handleAsync(async (req, res) => {
-  const { name } = req.body;
+  const { name, role: roleId } = req.body;
 
   const user = await User.findOne({ name });
 
@@ -52,7 +50,17 @@ export const addNewUser = handleAsync(async (req, res) => {
     throw new CustomError('User by this name already exists. Please provide a different name', 409);
   }
 
+  const role = await Role.findById(roleId);
+
+  if (!role) {
+    throw new CustomError('Provided role does not exist', 404);
+  }
+
   const newUser = await User.create(req.body);
+
+  await Role.findByIdAndUpdate(newUser.role, {
+    $inc: { userCount: 1 },
+  });
 
   sendResponse(res, 201, 'User added successfully', newUser);
 });
@@ -60,7 +68,7 @@ export const addNewUser = handleAsync(async (req, res) => {
 // Updates an existing user
 export const updateUser = handleAsync(async (req, res) => {
   const { userId } = req.params;
-  const { name } = req.body;
+  const { name, role: roleId } = req.body;
 
   const user = await User.findById(userId);
 
@@ -68,16 +76,32 @@ export const updateUser = handleAsync(async (req, res) => {
     throw new CustomError('User not found', 404);
   }
 
-  const userByName = await User.findOne({ name });
+  const userByName = await User.findOne({ name, _id: { $ne: userId } });
 
   if (userByName) {
     throw new CustomError('User by this name already exists. Please provide a different name', 409);
+  }
+
+  const role = await Role.findById(roleId);
+
+  if (!role) {
+    throw new CustomError('Provided role does not exist', 404);
   }
 
   const updatedUser = await User.findByIdAndUpdate(userId, req.body, {
     runValidators: true,
     new: true,
   });
+
+  if (updatedUser.role !== user.role) {
+    await Role.findByIdAndUpdate(updatedUser.role, {
+      $inc: { userCount: 1 },
+    });
+
+    await Role.findByIdAndUpdate(user.role, {
+      $inc: { userCount: -1 },
+    });
+  }
 
   sendResponse(res, 200, 'User updated successfully', updatedUser);
 });
@@ -92,25 +116,26 @@ export const deleteUser = handleAsync(async (req, res) => {
     throw new CustomError('User not found', 404);
   }
 
-  sendResponse(res, 200, 'User deleted successfully');
+  await Role.findByIdAndUpdate(deletedUser.role, {
+    $inc: { userCount: -1 },
+  });
+
+  sendResponse(res, 200, 'User deleted successfully', userId);
 });
 
 // Activates a user
 export const activateUser = handleAsync(async (req, res) => {
   const { userId } = req.params;
 
-  const user = await User.findById(userId);
+  const activatedUser = await User.findByIdAndUpdate(
+    userId,
+    { isActive: true },
+    { runValidators: true, new: true }
+  );
 
-  if (!user) {
+  if (!activatedUser) {
     throw new CustomError('User not found', 404);
   }
-
-  if (user.isActive) {
-    throw new CustomError('User is already active', 409);
-  }
-
-  user.isActive = true;
-  const activatedUser = await user.save();
 
   sendResponse(res, 200, 'User activated successfully', activatedUser);
 });
@@ -119,18 +144,15 @@ export const activateUser = handleAsync(async (req, res) => {
 export const deactivateUser = handleAsync(async (req, res) => {
   const { userId } = req.params;
 
-  const user = await User.findById(userId);
+  const deactivatedUser = await User.findByIdAndUpdate(
+    userId,
+    { isActive: false },
+    { runValidators: true, new: true }
+  );
 
-  if (!user) {
+  if (!deactivatedUser) {
     throw new CustomError('User not found', 404);
   }
-
-  if (!user.isActive) {
-    throw new CustomError('User is already inactive', 409);
-  }
-
-  user.isActive = false;
-  const deactivatedUser = await user.save();
 
   sendResponse(res, 200, 'User deactivated successfully', deactivatedUser);
 });
@@ -139,18 +161,15 @@ export const deactivateUser = handleAsync(async (req, res) => {
 export const archiveUser = handleAsync(async (req, res) => {
   const { userId } = req.params;
 
-  const user = await User.findById(userId);
+  const archivedUser = await User.findByIdAndUpdate(
+    userId,
+    { isArchived: true },
+    { runValidators: true, new: true }
+  );
 
-  if (!user) {
+  if (!archivedUser) {
     throw new CustomError('User not found', 404);
   }
-
-  if (user.isArchived) {
-    throw new CustomError('User is already archived', 409);
-  }
-
-  user.isArchived = true;
-  const archivedUser = await user.save();
 
   sendResponse(res, 200, 'User archived successfully', archivedUser);
 });
@@ -159,18 +178,15 @@ export const archiveUser = handleAsync(async (req, res) => {
 export const restoreUser = handleAsync(async (req, res) => {
   const { userId } = req.params;
 
-  const user = await User.findById(userId);
+  const restoredUser = await User.findByIdAndUpdate(
+    userId,
+    { isArchived: false },
+    { runValidators: true, new: true }
+  );
 
-  if (!user) {
+  if (!restoredUser) {
     throw new CustomError('User not found', 404);
   }
-
-  if (!user.isArchived) {
-    throw new CustomError('User is already unarchived', 409);
-  }
-
-  user.isArchived = false;
-  const restoredUser = await user.save();
 
   sendResponse(res, 200, 'Archived user restored successfully', restoredUser);
 });

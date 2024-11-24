@@ -52,7 +52,7 @@ export const updateRole = handleAsync(async (req, res) => {
     throw new CustomError('Role not found', 404);
   }
 
-  const roleByTitle = await Role.findOne({ title });
+  const roleByTitle = await Role.findOne({ title, _id: { $ne: roleId } });
 
   if (roleByTitle) {
     throw new CustomError(
