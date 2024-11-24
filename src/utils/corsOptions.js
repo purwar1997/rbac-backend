@@ -1,4 +1,4 @@
-const whitelist = ['http://localhost:4000', 'https://rbac-backend-mu.vercel.app/'];
+const whitelist = ['http://localhost:4000', 'https://role-based-access-control-ui-six.vercel.app'];
 
 const corsOptions = {
   origin: function (origin, callback) {
