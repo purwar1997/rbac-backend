@@ -56,12 +56,14 @@ export const addNewUser = handleAsync(async (req, res) => {
     throw new CustomError('Provided role does not exist', 404);
   }
 
-  const newUser = (await User.create(req.body)).populate({
+  let newUser = await User.create(req.body);
+
+  newUser = await User.findById(newUser._id).populate({
     path: 'role',
     select: 'title',
   });
 
-  await Role.findByIdAndUpdate(newUser.role, {
+  await Role.findByIdAndUpdate(newUser.role._id, {
     $inc: { userCount: 1 },
   });
 
@@ -96,7 +98,7 @@ export const updateUser = handleAsync(async (req, res) => {
     new: true,
   }).populate({ path: 'role', select: 'title' });
 
-  if (updatedUser.role !== user.role) {
+  if (updatedUser.role._id !== user.role) {
     await Role.findByIdAndUpdate(updatedUser.role, {
       $inc: { userCount: 1 },
     });
@@ -130,66 +132,50 @@ export const deleteUser = handleAsync(async (req, res) => {
 export const activateUser = handleAsync(async (req, res) => {
   const { userId } = req.params;
 
-  const activatedUser = await User.findByIdAndUpdate(
-    userId,
-    { isActive: true },
-    { runValidators: true, new: true }
-  );
+  const user = await User.findByIdAndUpdate(userId, { isActive: true }, { runValidators: true });
 
-  if (!activatedUser) {
+  if (!user) {
     throw new CustomError('User not found', 404);
   }
 
-  sendResponse(res, 200, 'User activated successfully', activatedUser);
+  sendResponse(res, 200, 'User activated successfully', userId);
 });
 
 // Deactivates a user
 export const deactivateUser = handleAsync(async (req, res) => {
   const { userId } = req.params;
 
-  const deactivatedUser = await User.findByIdAndUpdate(
-    userId,
-    { isActive: false },
-    { runValidators: true, new: true }
-  );
+  const user = await User.findByIdAndUpdate(userId, { isActive: false }, { runValidators: true });
 
-  if (!deactivatedUser) {
+  if (!user) {
     throw new CustomError('User not found', 404);
   }
 
-  sendResponse(res, 200, 'User deactivated successfully', deactivatedUser);
+  sendResponse(res, 200, 'User deactivated successfully', userId);
 });
 
 // Archives a user
 export const archiveUser = handleAsync(async (req, res) => {
   const { userId } = req.params;
 
-  const archivedUser = await User.findByIdAndUpdate(
-    userId,
-    { isArchived: true },
-    { runValidators: true, new: true }
-  );
+  const user = await User.findByIdAndUpdate(userId, { isArchived: true }, { runValidators: true });
 
-  if (!archivedUser) {
+  if (!user) {
     throw new CustomError('User not found', 404);
   }
 
-  sendResponse(res, 200, 'User archived successfully', archivedUser);
+  sendResponse(res, 200, 'User archived successfully', userId);
 });
 
 // Restores an archived user
 export const restoreUser = handleAsync(async (req, res) => {
   const { userId } = req.params;
 
-  const restoredUser = await User.findByIdAndUpdate(
-    userId,
-    { isArchived: false },
-    { runValidators: true, new: true }
-  );
+  const user = await User.findByIdAndUpdate(userId, { isArchived: false }, { runValidators: true });
 
-  if (!restoredUser) {
+  if (!user) {
     throw new CustomError('User not found', 404);
   }
 
-  sendResponse(res, 200, 'Archived user restored successfully', restoredUser);
+  sendResponse(res, 200, 'Archived user restored successfully', userId);
 });
