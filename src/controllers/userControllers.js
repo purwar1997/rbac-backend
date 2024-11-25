@@ -56,7 +56,10 @@ export const addNewUser = handleAsync(async (req, res) => {
     throw new CustomError('Provided role does not exist', 404);
   }
 
-  const newUser = await User.create(req.body);
+  const newUser = (await User.create(req.body)).populate({
+    path: 'role',
+    select: 'title',
+  });
 
   await Role.findByIdAndUpdate(newUser.role, {
     $inc: { userCount: 1 },
@@ -91,7 +94,7 @@ export const updateUser = handleAsync(async (req, res) => {
   const updatedUser = await User.findByIdAndUpdate(userId, req.body, {
     runValidators: true,
     new: true,
-  });
+  }).populate({ path: 'role', select: 'title' });
 
   if (updatedUser.role !== user.role) {
     await Role.findByIdAndUpdate(updatedUser.role, {
